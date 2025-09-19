@@ -133,7 +133,7 @@ export default function FactoryDashboard() {
             <FlaskConical className="w-6 h-6 text-yellow-400" />
             <h1 className="text-xl font-bold tracking-wide">Factory Dashboard</h1>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
