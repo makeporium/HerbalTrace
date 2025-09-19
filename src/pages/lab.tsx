@@ -79,6 +79,7 @@ export default function LabDashboard() {
   const handleSignOut = async () => {
     await signOut()
     setShowProfile(false)
+    navigate('/')
   }
 
   const handleGeneratePdf = () => {

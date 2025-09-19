@@ -63,7 +63,7 @@ export default function FactoryDashboard() {
 
   const [productName, setProductName] = useState('Ashwagandha Capsules')
   const [productType, setProductType] = useState('Capsule')
-  const [batchId, setBatchId] = useState()
+  const [batchId, setBatchId] = useState('')
   const [mfgDate, setMfgDate] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
   const [processSteps, setProcessSteps] = useState('Drying → Grinding → Extraction → Blending → Packaging')
@@ -76,6 +76,7 @@ export default function FactoryDashboard() {
   const handleSignOut = async () => {
     await signOut()
     setShowProfile(false)
+    navigate('/')
   }
 
   function addEventToBatch() {

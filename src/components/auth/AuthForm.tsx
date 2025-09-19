@@ -10,21 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Leaf, Shield, FlaskConical, Factory, Package, User } from 'lucide-react';
 
 const roleIcons = {
-  farmer: Leaf,
-  wild_collector: Leaf,
   lab: FlaskConical,
   factory: Factory,
-  consumer: User,
-  admin: Shield,
 };
 
 const roleDescriptions = {
-  farmer: 'Cultivate and harvest medicinal herbs',
-  wild_collector: 'Collect herbs from natural habitats',
   lab: 'Perform quality testing and certification',
   factory: 'Process herbs into finished products',
-  consumer: 'Purchase and verify herb authenticity',
-  admin: 'System administration and oversight',
 };
 
 export function AuthForm() {
@@ -233,28 +225,6 @@ export function AuthForm() {
                   />
                 </div>
 
-                {(formData.role === 'farmer' || formData.role === 'wild_collector') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="aadhaar_id">Aadhaar ID</Label>
-                      <Input
-                        id="aadhaar_id"
-                        placeholder="Aadhaar number"
-                        value={formData.aadhaar_id}
-                        onChange={(e) => handleInputChange('aadhaar_id', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cooperative_group">Cooperative</Label>
-                      <Input
-                        id="cooperative_group"
-                        placeholder="Cooperative name"
-                        value={formData.cooperative_group}
-                        onChange={(e) => handleInputChange('cooperative_group', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Creating account...' : 'Create Account'}

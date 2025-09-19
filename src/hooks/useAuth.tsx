@@ -37,55 +37,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-  // Listen to auth state changes
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (event, session) => {
-    setSession(session);
-    setUser(session?.user ?? null);
+    let mounted = true;
 
-    if (session?.user) {
-      // Fetch user profile
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
+    // Test Supabase connection
+    console.log('Testing Supabase connection...', {
+      url: supabase.supabaseUrl,
+      origin: window.location.origin,
+      hostname: window.location.hostname
+    });
 
-      if (!error) {
-        setProfile(profile as Profile);
+    // Listen to auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      console.log('Auth state change:', event, session?.user?.id);
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Fetch user profile
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (!error && mounted) {
+          setProfile(profile as Profile);
+        } else if (error) {
+          console.error('Error fetching profile:', error);
+          if (mounted) setProfile(null);
+        }
       } else {
-        console.error('Error fetching profile:', error);
-        setProfile(null);
+        if (mounted) setProfile(null);
       }
-    } else {
-      setProfile(null);
-    }
 
-    setLoading(false); // ✅ always stop loading after handling state change
-  });
+      if (mounted) setLoading(false);
+    });
 
-  // Check for existing session on mount
-  supabase.auth.getSession().then(async ({ data: { session } }) => {
-    setSession(session);
-    setUser(session?.user ?? null);
-
-    if (session?.user) {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-      if (!error) {
-        setProfile(profile as Profile);
+    // Check for existing session on mount
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error('Error getting session:', error);
       }
-    }
+      
+      setSession(session);
+      setUser(session?.user ?? null);
 
-    setLoading(false); // ✅ always stop loading here as well
-  });
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+        if (!error && mounted) {
+          setProfile(profile as Profile);
+        }
+      }
 
-  return () => subscription.unsubscribe();
-}, []);
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
 
   const signUp = async (email: string, password: string, userData: Partial<Profile>) => {
@@ -101,7 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase sign up error:', error);
+        throw error;
+      }
 
       if (data.user) {
         // Create profile
@@ -119,7 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             location: userData.location, // Store in location field for now
           });
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw profileError;
+        }
 
         toast({
           title: "Account created successfully!",
@@ -136,17 +164,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase sign in error:', error);
+        throw error;
+      }
 
-      toast({
-        title: "Signed in successfully!",
-        description: "Welcome back to HerbalTrace.",
-      });
+      if (data.user) {
+        toast({
+          title: "Signed in successfully!",
+          description: "Welcome back to HerbalTrace.",
+        });
+      }
 
       return { error: null };
     } catch (error: any) {
@@ -157,13 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      // Clear local state immediately
+      // Clear local state first to ensure immediate UI update
       setUser(null);
       setSession(null);
       setProfile(null);
+
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
 
       toast({
         title: "Signed out successfully!",
