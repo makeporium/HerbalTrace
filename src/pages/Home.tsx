@@ -46,7 +46,7 @@ const Home: React.FC = () => {
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900">HerbaPath Trace</h1>
+              <h1 className="text-4xl font-bold text-gray-900">HerbalTrace</h1>
               <p className="text-gray-600">Welcome back, {profile.full_name}!</p>
             </div>
             <div className="flex gap-2">
@@ -145,7 +145,7 @@ const Home: React.FC = () => {
       {!showAuth ? (
         <div className="text-center space-y-8 max-w-2xl mx-4">
           <div>
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">HerbaPath Trace</h1>
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">HerbalTrace</h1>
             <p className="text-xl text-gray-600 mb-2">Track the journey of herbal products from source to consumer</p>
             <p className="text-gray-500">Ensuring transparency, quality, and authenticity in the herbal supply chain</p>
           </div>
@@ -165,18 +165,28 @@ const Home: React.FC = () => {
             </Card>
           </div>
 
-          <Button
-            onClick={() => setShowAuth(true)}
-            size="lg"
-            className="px-8 py-4 text-lg mt-8"
-          >
-            Get Started - Sign In / Sign Up
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            <Button
+              onClick={() => setShowAuth(true)}
+              size="lg"
+              className="px-8 py-4 text-lg"
+            >
+              Get Started - Sign In / Sign Up
+            </Button>
+            <Button
+              onClick={() => navigate('/consumer')}
+              size="lg"
+              variant="outline"
+              className="px-8 py-4 text-lg"
+            >
+              Customer Portal
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="w-full max-w-md">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Welcome to HerbaPath Trace</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Welcome to HerbalTrace</h2>
             <p className="text-gray-600">Sign in to your account or create a new one</p>
           </div>
           <AuthForm />

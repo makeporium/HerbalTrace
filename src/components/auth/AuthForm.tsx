@@ -12,7 +12,6 @@ import { Leaf, Shield, FlaskConical, Factory, Package, User } from 'lucide-react
 const roleIcons = {
   farmer: Leaf,
   wild_collector: Leaf,
-  aggregator: Package,
   lab: FlaskConical,
   factory: Factory,
   consumer: User,
@@ -22,7 +21,6 @@ const roleIcons = {
 const roleDescriptions = {
   farmer: 'Cultivate and harvest medicinal herbs',
   wild_collector: 'Collect herbs from natural habitats',
-  aggregator: 'Collect and batch herbs from farmers/collectors',
   lab: 'Perform quality testing and certification',
   factory: 'Process herbs into finished products',
   consumer: 'Purchase and verify herb authenticity',

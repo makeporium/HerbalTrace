@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { getQRCodeData } from '@/utils/blockchain';
+import { useNavigate } from 'react-router-dom';
 import { 
   QrCode, 
   Search, 
@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Info,
   ExternalLink,
-  Shield
+  Shield,
+  ArrowLeft
 } from 'lucide-react';
 
 interface TraceabilityData {
@@ -36,6 +37,7 @@ export default function ConsumerPortal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const scanQRCode = async () => {
     if (!qrCode.trim()) {
@@ -105,10 +107,30 @@ export default function ConsumerPortal() {
   };
 
   return (
-    <DashboardLayout 
-      title="Consumer Portal" 
-      description="Scan QR codes to verify herb authenticity and traceability"
-    >
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      {/* Header */}
+      <header className="bg-green-900 text-white px-6 py-4 border-b-4 border-yellow-400">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Shield className="w-6 h-6 text-yellow-400" />
+            <h1 className="text-xl font-bold tracking-wide">HerbalTrace - Consumer Portal</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Home
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="px-6 py-8 max-w-6xl mx-auto">
       {/* QR Scanner Section */}
       <Card className="mb-8">
         <CardHeader>
@@ -467,6 +489,7 @@ export default function ConsumerPortal() {
           </div>
         </CardContent>
       </Card>
-    </DashboardLayout>
+      </main>
+    </div>
   );
 }
