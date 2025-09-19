@@ -10,7 +10,7 @@ import ConsumerPortal from "./pages/ConsumerPortal";
 import NotFound from "./pages/NotFound";
 import FactoryDashboard from "./pages/Factory";
 import LabDashboard from "./pages/lab";
-import Home from "./pages/home"; // ✅ new import
+import Home from "./pages/Home"; // ✅ new import
 
 const queryClient = new QueryClient();
 
