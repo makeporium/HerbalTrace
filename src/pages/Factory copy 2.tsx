@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { User, LogOut, ArrowLeft, FlaskConical } from 'lucide-react'
+import { User, LogOut, ArrowLeft, FileText, FlaskConical } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useNavigate } from 'react-router-dom'
 
+// Reusing and adapting the Section and SubSection components from the second code block
 function Section({ title, children, description = undefined }) {
   return (
     <section className="bg-white rounded border border-gray-300 mb-6 shadow-sm">
@@ -72,6 +73,7 @@ export default function FactoryDashboard() {
   const [herbName, setHerbName] = useState('')
   const [otherIngredients, setOtherIngredients] = useState('')
 
+
   const handleSignOut = async () => {
     await signOut()
     setShowProfile(false)
@@ -96,37 +98,9 @@ export default function FactoryDashboard() {
     setQrModal({ open: true, payload })
   }
 
-  // ✅ Download QR Code Function
-  function downloadQRCode() {
-    const svg = document.querySelector('#product-qr')
-    if (!svg) return
-    const serializer = new XMLSerializer()
-    const svgString = serializer.serializeToString(svg)
-
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
-    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
-    const url = URL.createObjectURL(svgBlob)
-
-    img.onload = () => {
-      canvas.width = img.width
-      canvas.height = img.height
-      ctx.drawImage(img, 0, 0)
-      URL.revokeObjectURL(url)
-
-      const pngUrl = canvas.toDataURL('image/png')
-      const downloadLink = document.createElement('a')
-      downloadLink.href = pngUrl
-      downloadLink.download = `${qrModal.payload.productName || 'qr-code'}.png`
-      downloadLink.click()
-    }
-    img.src = url
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header with new styling */}
       <header className="bg-green-900 text-white px-6 py-4 border-b-4 border-yellow-400">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -181,10 +155,11 @@ export default function FactoryDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content with new styling and components */}
       <main className="px-6 py-8 max-w-4xl mx-auto">
         {activeTab === 'ProductDetails' && (
           <>
+            {/* Product Details Section */}
             <Section title="Product Details" description="Define product batch details">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -240,6 +215,7 @@ export default function FactoryDashboard() {
               </div>
             </Section>
 
+            {/* Ingredients Section */}
             <Section title="Ingredients" description="Define product ingredients">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -275,6 +251,7 @@ export default function FactoryDashboard() {
               </div>
             </Section>
 
+            {/* Formulation & Manufacturing Section */}
             <Section title="Formulation & Manufacturing" description="Record steps and notes">
               <SubSection title="Processing Steps">
                 <div className="flex gap-3 items-end">
@@ -371,26 +348,14 @@ export default function FactoryDashboard() {
         </div>
       )}
 
-      {/* QR Modal */}
+      {/* QR Modal stays same */}
       <Modal open={qrModal.open} onClose={() => setQrModal({ open: false, payload: null })}>
         {qrModal.payload && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Product QR & Provenance</h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex flex-col items-center justify-center space-y-3">
-                <QRCodeSVG
-                  id="product-qr"
-                  value={JSON.stringify(qrModal.payload)}
-                  size={200}
-                  level="M"
-                  includeMargin
-                />
-                <Button
-                  onClick={downloadQRCode}
-                  className="bg-green-600 text-white hover:bg-green-700"
-                >
-                  Download QR Code
-                </Button>
+              <div className="flex items-center justify-center">
+                <QRCodeSVG value={JSON.stringify(qrModal.payload)} size={200} level="M" includeMargin />
               </div>
               <div className="text-sm text-gray-700 space-y-1">
                 <p className="font-medium">{qrModal.payload.productName}</p>
