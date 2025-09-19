@@ -63,7 +63,7 @@ export default function FactoryDashboard() {
 
   const [productName, setProductName] = useState('Ashwagandha Capsules')
   const [productType, setProductType] = useState('Capsule')
-  const [lotId, setLotId] = useState(() => `FP-${Date.now().toString().slice(-6)}`)
+  const [batchId, setBatchId] = useState()
   const [mfgDate, setMfgDate] = useState('')
   const [expiryDate, setExpiryDate] = useState('')
   const [processSteps, setProcessSteps] = useState('Drying → Grinding → Extraction → Blending → Packaging')
@@ -71,27 +71,89 @@ export default function FactoryDashboard() {
   const [yieldQty, setYieldQty] = useState('5000')
   const [herbName, setHerbName] = useState('')
   const [otherIngredients, setOtherIngredients] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignOut = async () => {
     await signOut()
     setShowProfile(false)
   }
 
+  function addEventToBatch() {
+    if (!batchId) {
+      alert('Please enter a valid batch ID');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log('User location:', { latitude, longitude });
+          
+          try {
+            // Send stage event with geolocation
+            const stageResponse = await fetch('https://sihayurvedabe.vercel.app/api/batches/add-stage-event', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                formatted_batch_id: batchId,
+                stage_type: 'ProcessingStep',
+                metadata: {
+                  latitude,
+                  longitude,
+                  productName,
+                  dosageForm: productType,
+                  units: yieldQty,
+                  mfgDate,
+                  expiryDate,
+                  steps: processSteps,
+                  notes: processNotes,
+                  herbName,
+                  otherIngredients
+                }}
+              )
+            });
+
+            if (!stageResponse.ok) {
+              throw new Error('Failed to record processing step event');
+            }
+
+            const stageData = await stageResponse.json();
+            console.log('Processing step event recorded:', stageData);
+            openQrPreview();
+            
+          } catch (error) {
+            console.error('Error recording processing step event:', error);
+            alert('Failed to record processing data. Please try again.');
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Could not determine your location. Please ensure location services are enabled.');
+          setIsSubmitting(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } else {
+      console.log('Geolocation is not supported by this browser');
+      alert('Geolocation is not supported by your browser.');
+      setIsSubmitting(false);
+    }
+  }
+
   function openQrPreview() {
     const payload = {
-      productName,
-      dosageForm: productType,
-      units: yieldQty,
-      factoryBatchId: lotId,
-      mfgDate,
-      expiryDate,
-      provenance: {
-        processing: processSteps.split('→').map(s => s.trim()),
-        labStatus: 'Approved',
-        notes: processNotes,
-        herbName,
-        otherIngredients
-      },
+      batchId
     }
     setQrModal({ open: true, payload })
   }
@@ -255,11 +317,10 @@ export default function FactoryDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Batch ID</label>
                   <input
-                    type="text"
+                    type="number"
                     className="w-full rounded-md border border-gray-300 bg-gray-100 text-gray-700 px-2 py-1"
-                    value={lotId}
-                    readOnly
-                    placeholder="Auto-generated lot ID"
+                    value={batchId}
+                    onChange={(e) => setBatchId(e.target.value)}
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -310,9 +371,23 @@ export default function FactoryDashboard() {
               </SubSection>
 
               <div className="pt-4 flex justify-end">
-                <Button onClick={openQrPreview} className="bg-green-600 text-white hover:bg-green-700">
-                  Generate QR Code
+
+                <Button 
+                  onClick={addEventToBatch} 
+                  disabled={isSubmitting}
+                  className={`bg-green-600 text-white hover:bg-green-700 ${isSubmitting ? 'opacity-75 cursor-not-allowed' : ''}`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : 'Generate Product QR'}
                 </Button>
+
               </div>
             </Section>
           </>
@@ -393,12 +468,7 @@ export default function FactoryDashboard() {
                 </Button>
               </div>
               <div className="text-sm text-gray-700 space-y-1">
-                <p className="font-medium">{qrModal.payload.productName}</p>
-                <p>Factory Lot: {qrModal.payload.factoryBatchId}</p>
-                <p>Form: {qrModal.payload.dosageForm} • Units: {qrModal.payload.units}</p>
-                <p>Expiry: {qrModal.payload.expiryDate}</p>
-                <p>Lab: {qrModal.payload.provenance.labStatus}</p>
-                <p>Processing: {qrModal.payload.provenance.processing.join(' → ')}</p>
+                <p>Batch Id: {qrModal.payload.batchId}</p>
               </div>
             </div>
           </div>
