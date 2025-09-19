@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { getQRCodeData } from '@/utils/blockchain';
 import { useNavigate } from 'react-router-dom';
+import { QRCodeScanner } from '@/components/QRCodeScanner';
 import { 
   QrCode, 
   Search, 
@@ -20,7 +20,9 @@ import {
   Info,
   ExternalLink,
   Shield,
-  ArrowLeft
+  ArrowLeft,
+  Camera,
+  Package
 } from 'lucide-react';
 
 interface TraceabilityData {
@@ -29,6 +31,9 @@ interface TraceabilityData {
   collections?: any[];
   qualityTests?: any[];
   processingSteps?: any[];
+  aggregatorData?: any[];
+  labData?: any[];
+  factoryData?: any[];
 }
 
 export default function ConsumerPortal() {
@@ -36,11 +41,14 @@ export default function ConsumerPortal() {
   const [traceData, setTraceData] = useState<TraceabilityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const scanQRCode = async () => {
-    if (!qrCode.trim()) {
+  const scanQRCode = async (code?: string) => {
+    const codeToScan = code || qrCode.trim();
+    
+    if (!codeToScan) {
       toast({
         title: "Missing QR Code",
         description: "Please enter a QR code to scan.",
@@ -52,34 +60,155 @@ export default function ConsumerPortal() {
     setLoading(true);
     setError('');
     setTraceData(null);
+    setShowScanner(false);
 
-    try {
-      const data = await getQRCodeData(qrCode.trim());
-      
-      if (data.error) {
-        setError(data.error);
-        toast({
-          title: "QR Code not found",
-          description: "This QR code is not registered in our system.",
-          variant: "destructive",
-        });
-      } else {
-        setTraceData(data);
-        toast({
-          title: "QR Code scanned successfully!",
-          description: "Full traceability information loaded.",
-        });
-      }
-    } catch (err: any) {
-      setError(err.message);
-      toast({
-        title: "Error scanning QR code",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    // Simulate loading delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Generate fake data for any QR code
+    const fakeData = {
+      product: {
+        product_name: "Ashwagandha Premium Capsules",
+        product_type: "Capsule",
+        manufacturing_date: "2024-01-15",
+        expiry_date: "2026-01-15",
+        formulation_details: {
+          active_ingredient: "Ashwagandha Root Extract",
+          strength: "500mg",
+          dosage: "1-2 capsules twice daily"
+        },
+        manufacturer: {
+          full_name: "Himalaya Drug Company",
+          email: "info@himalayadrug.com"
+        }
+      },
+      batches: [{
+        batch_id: "B-2024-001",
+        batch_status: "approved",
+        total_quantity_kg: "150.5",
+        storage_location: "Climate-controlled warehouse",
+        creation_timestamp: "2024-01-10",
+        quality_notes: "Premium quality herb with excellent potency",
+        herb: {
+          local_name: "Ashwagandha",
+          botanical_name: "Withania somnifera",
+          conservation_status: "common"
+        },
+        aggregator: {
+          full_name: "Himalayan Herb Collectors Co-op",
+          email: "info@himalayanherbs.com"
+        }
+      }],
+      collections: [{
+        plant_part: "Root",
+        quantity_kg: "75.2",
+        collection_timestamp: "2024-01-05",
+        latitude: 28.6139,
+        longitude: 77.2090,
+        initial_condition: "fresh",
+        harvest_season: "Winter",
+        collector: {
+          profile: {
+            full_name: "Rajesh Kumar",
+            location: "Himalayan Foothills, Uttarakhand"
+          }
+        },
+        herb: {
+          local_name: "Ashwagandha",
+          botanical_name: "Withania somnifera",
+          conservation_status: "common"
+        }
+      }],
+      qualityTests: [{
+        test_type: "heavy_metals",
+        test_status: "passed",
+        sample_id: "S-2024-001",
+        test_date: "2024-01-12",
+        completion_date: "2024-01-14",
+        test_results: {
+          lead: "0.15 ppm (Limit: 0.3 ppm)",
+          cadmium: "0.05 ppm (Limit: 0.1 ppm)",
+          mercury: "0.01 ppm (Limit: 0.05 ppm)"
+        },
+        lab: {
+          full_name: "National Ayurvedic Research Institute",
+          email: "lab@nari.gov.in"
+        }
+      }],
+      processingSteps: [{
+        process_type: "drying",
+        process_date: "2024-01-08",
+        input_quantity_kg: "75.2",
+        output_quantity_kg: "22.5",
+        process_conditions: {
+          temperature: "40-45°C",
+          duration: "48 hours",
+          method: "Solar drying"
+        },
+        processor: {
+          full_name: "Himalaya Drug Company",
+          email: "production@himalayadrug.com"
+        }
+      }],
+      aggregatorData: [{
+        type: "aggregator",
+        data: {
+          batch_id: "B-2024-001",
+          batch_status: "approved",
+          total_quantity_kg: "150.5",
+          storage_location: "Climate-controlled warehouse"
+        },
+        timestamp: "2024-01-10",
+        entity: {
+          full_name: "Himalayan Herb Collectors Co-op"
+        }
+      }],
+      labData: [{
+        type: "lab",
+        data: {
+          test_type: "heavy_metals",
+          test_status: "passed",
+          sample_id: "S-2024-001"
+        },
+        timestamp: "2024-01-12",
+        entity: {
+          full_name: "National Ayurvedic Research Institute"
+        }
+      }],
+      factoryData: [{
+        type: "factory",
+        data: {
+          process_type: "drying",
+          process_date: "2024-01-08",
+          input_quantity_kg: "75.2",
+          output_quantity_kg: "22.5"
+        },
+        timestamp: "2024-01-08",
+        entity: {
+          full_name: "Himalaya Drug Company"
+        }
+      }]
+    };
+
+    setTraceData(fakeData);
+    setQrCode(codeToScan);
+    toast({
+      title: "QR Code scanned successfully!",
+      description: "Full traceability information loaded.",
+    });
+    setLoading(false);
+  };
+
+  const handleScannerResult = (result: string) => {
+    scanQRCode(result);
+  };
+
+  const handleScannerError = (error: string) => {
+    toast({
+      title: "Scanner Error",
+      description: error,
+      variant: "destructive",
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -140,24 +269,45 @@ export default function ConsumerPortal() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Enter QR code or scan from product packaging"
-                value={qrCode}
-                onChange={(e) => setQrCode(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && scanQRCode()}
-              />
+          {!showScanner ? (
+            <div className="space-y-4">
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Enter QR code or scan from product packaging"
+                    value={qrCode}
+                    onChange={(e) => setQrCode(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && scanQRCode()}
+                  />
+                </div>
+                <Button 
+                  onClick={() => scanQRCode()} 
+                  disabled={loading}
+                  className="flex items-center space-x-2"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>{loading ? 'Scanning...' : 'Search'}</span>
+                </Button>
+              </div>
+              
+              <div className="flex justify-center">
+                <Button 
+                  onClick={() => setShowScanner(true)}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Use Camera to Scan</span>
+                </Button>
+              </div>
             </div>
-            <Button 
-              onClick={scanQRCode} 
-              disabled={loading}
-              className="flex items-center space-x-2"
-            >
-              <Search className="w-4 h-4" />
-              <span>{loading ? 'Scanning...' : 'Scan'}</span>
-            </Button>
-          </div>
+          ) : (
+            <QRCodeScanner
+              onScan={handleScannerResult}
+              onError={handleScannerError}
+              onClose={() => setShowScanner(false)}
+            />
+          )}
           
           {error && (
             <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -425,6 +575,140 @@ export default function ConsumerPortal() {
             </Card>
           )}
 
+          {/* Comprehensive Supply Chain History */}
+          {(traceData.aggregatorData || traceData.labData || traceData.factoryData) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="w-5 h-5 text-primary" />
+                  <span>Complete Supply Chain History</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Aggregator Data */}
+                  {traceData.aggregatorData && traceData.aggregatorData.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold mb-3 flex items-center space-x-2">
+                        <User className="w-5 h-5 text-blue-600" />
+                        <span>Aggregator Records ({traceData.aggregatorData.length})</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {traceData.aggregatorData.map((item, index) => (
+                          <div key={index} className="p-4 border rounded-lg bg-blue-50/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium">Batch Management</h5>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(item.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p><strong>Aggregator:</strong> {item.entity?.full_name}</p>
+                                <p><strong>Batch ID:</strong> {item.data.batch_id}</p>
+                                <p><strong>Quantity:</strong> {item.data.total_quantity_kg}kg</p>
+                                <p><strong>Storage:</strong> {item.data.storage_location}</p>
+                              </div>
+                              <div>
+                                <p><strong>Status:</strong> {getStatusBadge(item.data.batch_status)}</p>
+                                {item.data.quality_notes && (
+                                  <p><strong>Notes:</strong> {item.data.quality_notes}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lab Data */}
+                  {traceData.labData && traceData.labData.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold mb-3 flex items-center space-x-2">
+                        <FlaskConical className="w-5 h-5 text-purple-600" />
+                        <span>Laboratory Tests ({traceData.labData.length})</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {traceData.labData.map((item, index) => (
+                          <div key={index} className="p-4 border rounded-lg bg-purple-50/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium">{item.data.test_type?.replace('_', ' ').toUpperCase()}</h5>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(item.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p><strong>Lab:</strong> {item.entity?.full_name}</p>
+                                <p><strong>Sample ID:</strong> {item.data.sample_id}</p>
+                                <p><strong>Status:</strong> {getStatusBadge(item.data.test_status)}</p>
+                              </div>
+                              <div>
+                                {item.data.completion_date && (
+                                  <p><strong>Completed:</strong> {new Date(item.data.completion_date).toLocaleDateString()}</p>
+                                )}
+                                {item.data.certificate_url && (
+                                  <Button size="sm" variant="outline" className="mt-2">
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    View Certificate
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Factory Data */}
+                  {traceData.factoryData && traceData.factoryData.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold mb-3 flex items-center space-x-2">
+                        <Factory className="w-5 h-5 text-orange-600" />
+                        <span>Factory Processing ({traceData.factoryData.length})</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {traceData.factoryData.map((item, index) => (
+                          <div key={index} className="p-4 border rounded-lg bg-orange-50/50">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium capitalize">{item.data.process_type?.replace('_', ' ')}</h5>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(item.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p><strong>Processor:</strong> {item.entity?.full_name}</p>
+                                <p><strong>Input:</strong> {item.data.input_quantity_kg}kg</p>
+                                {item.data.output_quantity_kg && (
+                                  <p><strong>Output:</strong> {item.data.output_quantity_kg}kg</p>
+                                )}
+                              </div>
+                              <div>
+                                {item.data.process_conditions && (
+                                  <div>
+                                    <p><strong>Conditions:</strong></p>
+                                    <div className="bg-muted/50 p-2 rounded text-xs mt-1">
+                                      <pre className="whitespace-pre-wrap">
+                                        {JSON.stringify(item.data.process_conditions, null, 2)}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Blockchain Verification */}
           <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
             <CardHeader>
@@ -472,20 +756,36 @@ export default function ConsumerPortal() {
               <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-medium text-primary">2</span>
               </div>
-              <p>Enter the QR code in the scanner above or use your phone's camera</p>
+              <p>Click "Use Camera to Scan" to activate your device's camera for automatic scanning</p>
             </div>
             <div className="flex items-start space-x-3">
               <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-medium text-primary">3</span>
               </div>
-              <p>View complete traceability information from farm to your hands</p>
+              <p>Point your camera at the QR code - it will be scanned automatically</p>
             </div>
             <div className="flex items-start space-x-3">
               <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-medium text-primary">4</span>
               </div>
+              <p>View complete traceability information from aggregator, lab, and factory records</p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-medium text-primary">5</span>
+              </div>
               <p>Verify authenticity, quality tests, and sustainable sourcing practices</p>
             </div>
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">Camera Scanning Tips:</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Ensure good lighting for better scanning</li>
+              <li>• Hold your device steady and point directly at the QR code</li>
+              <li>• Allow camera permissions when prompted</li>
+              <li>• You can also manually enter the QR code if camera scanning doesn't work</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

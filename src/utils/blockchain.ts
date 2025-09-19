@@ -147,9 +147,14 @@ export async function getQRCodeData(qrCode: string): Promise<{
   collections?: any[];
   qualityTests?: any[];
   processingSteps?: any[];
+  aggregatorData?: any[];
+  labData?: any[];
+  factoryData?: any[];
   error?: string;
 }> {
   try {
+    console.log('Fetching data for QR code:', qrCode);
+
     // Check if it's a product QR code
     const { data: product } = await supabase
       .from('products')
@@ -161,6 +166,8 @@ export async function getQRCodeData(qrCode: string): Promise<{
       .single();
 
     if (product) {
+      console.log('Found product:', product);
+      
       // Get all related batch information
       const { data: batches } = await supabase
         .from('batches')
@@ -170,6 +177,8 @@ export async function getQRCodeData(qrCode: string): Promise<{
           aggregator:profiles!batches_aggregator_id_fkey(*)
         `)
         .in('id', product.batch_ids);
+
+      console.log('Found batches:', batches);
 
       // Get collection events for these batches
       const batchIds = batches?.map(b => b.id) || [];
@@ -189,8 +198,9 @@ export async function getQRCodeData(qrCode: string): Promise<{
         .in('batch_id', batchIds);
 
       const collections = batchCollections?.map(bc => bc.collection_event) || [];
+      console.log('Found collections:', collections);
 
-      // Get quality tests
+      // Get quality tests from labs
       const { data: qualityTests } = await supabase
         .from('quality_tests')
         .select(`
@@ -199,7 +209,9 @@ export async function getQRCodeData(qrCode: string): Promise<{
         `)
         .in('batch_id', batchIds);
 
-      // Get processing steps
+      console.log('Found quality tests:', qualityTests);
+
+      // Get processing steps from factories
       const { data: processingSteps } = await supabase
         .from('processing_steps')
         .select(`
@@ -208,12 +220,41 @@ export async function getQRCodeData(qrCode: string): Promise<{
         `)
         .in('batch_id', batchIds);
 
+      console.log('Found processing steps:', processingSteps);
+
+      // Get aggregator data (batch management, storage, etc.)
+      const aggregatorData = batches?.map(batch => ({
+        type: 'aggregator',
+        data: batch,
+        timestamp: batch.creation_timestamp,
+        entity: batch.aggregator
+      })) || [];
+
+      // Get lab data (quality tests, certifications)
+      const labData = qualityTests?.map(test => ({
+        type: 'lab',
+        data: test,
+        timestamp: test.test_date,
+        entity: test.lab
+      })) || [];
+
+      // Get factory data (processing, manufacturing)
+      const factoryData = processingSteps?.map(step => ({
+        type: 'factory',
+        data: step,
+        timestamp: step.process_date,
+        entity: step.processor
+      })) || [];
+
       return {
         product,
         batches,
         collections,
         qualityTests,
-        processingSteps
+        processingSteps,
+        aggregatorData,
+        labData,
+        factoryData
       };
     }
 
@@ -229,6 +270,8 @@ export async function getQRCodeData(qrCode: string): Promise<{
       .single();
 
     if (batch) {
+      console.log('Found batch:', batch);
+      
       // Get collection events for this batch
       const { data: batchCollections } = await supabase
         .from('batch_collections')
@@ -247,9 +290,54 @@ export async function getQRCodeData(qrCode: string): Promise<{
 
       const collections = batchCollections?.map(bc => bc.collection_event) || [];
 
+      // Get quality tests for this batch
+      const { data: qualityTests } = await supabase
+        .from('quality_tests')
+        .select(`
+          *,
+          lab:profiles!quality_tests_lab_id_fkey(*)
+        `)
+        .eq('batch_id', batch.id);
+
+      // Get processing steps for this batch
+      const { data: processingSteps } = await supabase
+        .from('processing_steps')
+        .select(`
+          *,
+          processor:profiles!processing_steps_processor_id_fkey(*)
+        `)
+        .eq('batch_id', batch.id);
+
+      // Organize data by source
+      const aggregatorData = [{
+        type: 'aggregator',
+        data: batch,
+        timestamp: batch.creation_timestamp,
+        entity: batch.aggregator
+      }];
+
+      const labData = qualityTests?.map(test => ({
+        type: 'lab',
+        data: test,
+        timestamp: test.test_date,
+        entity: test.lab
+      })) || [];
+
+      const factoryData = processingSteps?.map(step => ({
+        type: 'factory',
+        data: step,
+        timestamp: step.process_date,
+        entity: step.processor
+      })) || [];
+
       return {
         batches: [batch],
-        collections
+        collections,
+        qualityTests,
+        processingSteps,
+        aggregatorData,
+        labData,
+        factoryData
       };
     }
 
