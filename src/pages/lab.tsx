@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 //import { Badge } from '@/components/ui/badge'
 import { useNavigate } from 'react-router-dom'
+import { supabase, storage } from '@/integrations/supabase/client'
 
 function Section({ title, children, description = undefined }) {
   return (
@@ -80,24 +81,9 @@ export default function LabDashboard() {
     setShowProfile(false)
   }
 
-  const handleGeneratePdf = async () => {
-    const element = reportRef.current
-    if (!element) return
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true })
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const imgData = canvas.toDataURL('image/png')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const imgHeight = (canvas.height * pageWidth) / canvas.width
-    let position = 0
-    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight)
-    while (imgHeight - position > pageHeight) {
-      position += pageHeight
-      pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, -position, pageWidth, imgHeight)
-    }
-    pdf.save('lab-report.pdf')
-  }
+  const handleGeneratePdf = () => {
+    window.print();
+  };
 
   const handleBlockchainQr = async () => {
     const payload = { reportId: '#REP-2025-0001', timestamp: Date.now(), status: 'draft' }
@@ -106,6 +92,101 @@ export default function LabDashboard() {
     if (win) {
       win.document.write(`<img src="${url}" alt="QR Code" style="width:280px;height:280px" />`)
       win.document.close()
+    }
+  }
+
+  const [batchId, setBatchId] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0])
+    }
+  }
+
+  const handleLabTestUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedFile || !batchId) return
+
+    const formData = new FormData()
+    formData.append('file', selectedFile)
+
+    try {
+      setIsUploading(true)
+      // Upload the file first
+      const response = await fetch('https://sihayurvedabe.vercel.app/api/batches/upload-report', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload report')
+      }
+
+      const data = await response.json()
+      console.log('File uploaded successfully. URL:', data.fileUrl)
+      
+      // Get user's geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log('User location:', { latitude, longitude });
+            
+            try {
+              // Send stage event with geolocation
+              const stageResponse = await fetch('https://sihayurvedabe.vercel.app/api/batches/add-stage-event', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  formatted_batch_id: batchId,
+                  stage_type: 'QualityTest',
+                  metadata: {
+                    latitude,
+                    longitude,
+                    timestamp: new Date().toISOString(),
+                    reportUrl: data.fileUrl
+                  }
+                })
+              });
+
+              if (!stageResponse.ok) {
+                throw new Error('Failed to record quality test event');
+              }
+
+              const stageData = await stageResponse.json();
+              console.log('Quality test event recorded:', stageData);
+              alert(`Report uploaded successfully!\nLocation recorded: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}`);
+            } catch (error) {
+              console.error('Error recording quality test event:', error);
+              alert('Report uploaded, but failed to record location data.');
+            }
+          },
+          (error) => {
+            console.error('Error getting location:', error);
+            alert('Report uploaded successfully!\nCould not determine your location.');
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000, // Increased timeout to 10 seconds
+            maximumAge: 0
+          }
+        );
+      } else {
+        console.log('Geolocation is not supported by this browser');
+        alert('Report uploaded successfully!\nGeolocation is not supported by your browser.');
+      }
+      
+      setBatchId('')
+      setSelectedFile(null)
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      alert('Failed to upload report. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -204,6 +285,60 @@ export default function LabDashboard() {
 
       {/* Main */}
       <main className="px-6 py-8 max-w-4xl mx-auto" ref={reportRef}>
+        {/* Lab Test Report Upload Section */}
+        <Section title="Upload Lab Test Report">
+          <form onSubmit={handleLabTestUpload} className="space-y-4">
+            <div>
+              <label htmlFor="batchId" className="block text-sm font-medium text-gray-700 mb-1">
+                Batch ID
+              </label>
+              <input
+                type="text"
+                id="batchId"
+                value={batchId}
+                onChange={(e) => setBatchId(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                placeholder="Enter batch ID"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lab Test Report (PDF only)
+              </label>
+              <div className="mt-1 flex items-center">
+                <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50">
+                  {selectedFile ? selectedFile.name : 'Choose file'}
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileChange}
+                    className="sr-only"
+                    required
+                  />
+                </label>
+                {selectedFile && (
+                  <span className="ml-3 text-sm text-gray-500">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Only PDF files are accepted. Max size: 10MB
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={!batchId || !selectedFile || isUploading}
+                className="bg-green-700 hover:bg-green-800"
+              >
+                {isUploading ? 'Uploading...' : 'Upload Report'}
+              </Button>
+            </div>
+          </form>
+        </Section>
+
         {/* Report Details */}
         <Section title="Report Details" description="Manual metadata for the sample and test session">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -236,14 +371,6 @@ export default function LabDashboard() {
                 <option>Bark</option>
                 <option>Flower</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Collector ID & Source</label>
-              <input disabled defaultValue="Auto from batch" className="w-full rounded-md border border-gray-300 bg-gray-100 text-gray-700 px-2 py-1" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Collection Date & GPS</label>
-              <input disabled defaultValue="Auto from blockchain" className="w-full rounded-md border border-gray-300 bg-gray-100 text-gray-700 px-2 py-1" />
             </div>
           </div>
         </Section>
@@ -422,19 +549,6 @@ export default function LabDashboard() {
             </div>
           </SubSection>
 
-          {/* D. Chemical & Marker Tests */}
-          <SubSection title="D. Chemical & Marker Tests">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chromatographic Fingerprint</label>
-                <input type="file" className="w-full rounded-md border border-gray-300 px-2 py-1" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Marker Compound Quantification (% w/w)</label>
-                <input className="w-full rounded-md border border-gray-300 px-2 py-1" />
-              </div>
-            </div>
-          </SubSection>
         </Section>
 
         {/* Compliance Evaluation */}
@@ -483,7 +597,6 @@ export default function LabDashboard() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">QC Officer Name</label>
               <input className="w-full rounded-md border border-gray-300 px-2 py-1" placeholder="Enter QC officer name" />
-              <input className="w-full rounded-md border border-gray-300 px-2 py-1 mt-2" placeholder="Digital signature (placeholder)" />
             </div>
           </div>
         </Section>
@@ -495,10 +608,6 @@ export default function LabDashboard() {
             {/* <button onClick={() => document.getElementById('chart-preview')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 rounded border border-gray-400">Preview Charts</button>
             <button onClick={handleBlockchainQr} className="px-4 py-2 rounded border border-gray-400">Blockchain / QR Link</button> */}
           </div>
-          {/* <div className="mt-6 border border-gray-300 rounded p-4 bg-white">
-            <h4 className="font-semibold text-gray-800 mb-3">Laboratory Charts</h4>
-            <canvas id="chart-preview" ref={chartRef} height="160"></canvas>
-          </div> */}
         </Section>
       </main>
     </div>
