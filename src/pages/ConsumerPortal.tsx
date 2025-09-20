@@ -24,7 +24,8 @@ import {
   Camera,
   Package,
   Thermometer,
-  Clock
+  Clock,
+  FileText
 } from 'lucide-react';
 import { log } from 'node:console';
 
@@ -64,7 +65,7 @@ const StageTitle = ({ type }: { type: number }) => {
     1: 'Quality Assurance Test',
     2: 'Product Manufacturing',
   };
-  return <h4 className="font-semibold text-lg">{titles[type] || 'Unknown Stage'}</h4>;
+  return <h4 className="font-semibold text-base sm:text-lg">{titles[type] || 'Unknown Stage'}</h4>;
 };
 
 const CollectionStage = ({ metadata }) => {
@@ -114,23 +115,125 @@ const CollectionStage = ({ metadata }) => {
   );
 };
 
-const QualityTestStage = ({ metadata }) => (
-  <div className="mt-2 space-y-2 text-sm">
-    <div className="flex items-center space-x-2">
-      <MapPin className="w-4 h-4 text-muted-foreground" />
-      <span>Location: {metadata.latitude.toFixed(4)}, {metadata.longitude.toFixed(4)}</span>
+const QualityTestStage = ({ metadata }) => {
+  const [healthCheckLoading, setHealthCheckLoading] = useState(false);
+  const [healthResult, setHealthResult] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const checkLabReportHealth = async () => {
+    if (!metadata.reportUrl) {
+      toast({
+        title: "No Lab Report Available",
+        description: "This batch doesn't have a lab report URL attached.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setHealthCheckLoading(true);
+    try {
+      const response = await fetch('https://sihayurvedabe.vercel.app/api/ai/analyse-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pdfUrl: metadata.reportUrl
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze lab report');
+      }
+
+      const result = await response.json();
+      setHealthResult(result.rating);
+    } catch (error) {
+      console.error('Error checking lab report health:', error);
+      toast({
+        title: "Error",
+        description: "Failed to analyze lab report. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setHealthCheckLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-3 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-2">
+        <div className="space-y-1">
+          <p className="font-medium text-muted-foreground">Location</p>
+          <div className="flex items-center space-x-1">
+            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <span>
+              {metadata.latitude?.toFixed(4)}, {metadata.longitude?.toFixed(4)}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium text-muted-foreground">Test Date</p>
+          <div className="flex items-center space-x-1">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span>
+              {new Date(metadata.timestamp).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {metadata.reportUrl && (
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <FileText className="w-4 h-4 text-blue-600" />
+              <a 
+                href={metadata.reportUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline text-sm flex items-center break-all"
+              >
+                View Lab Report
+                <ExternalLink className="w-3 h-3 ml-1" />
+              </a>
+            </div>
+            <Button 
+              onClick={checkLabReportHealth} 
+              variant="outline" 
+              size="sm"
+              disabled={healthCheckLoading}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 text-sm"
+            >
+              {healthCheckLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-current"></div>
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Thermometer className="w-3.5 h-3.5" />
+                  <span>Check Health</span>
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {healthResult && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-100 rounded-md">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <p className="font-medium text-green-800">
+                  Health Status: <span className="capitalize">{healthResult}</span>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
-    <p><strong>Test Timestamp:</strong> {new Date(metadata.timestamp).toLocaleString()}</p>
-    {metadata.reportUrl && (
-      <Button asChild variant="outline" size="sm" className="mt-2">
-        <a href={metadata.reportUrl} target="_blank" rel="noopener noreferrer">
-          <ExternalLink className="w-4 h-4 mr-2" />
-          View Test Report
-        </a>
-      </Button>
-    )}
-  </div>
-);
+  );
+};
 
 const ProcessingStage = ({ metadata }) => (
   <div className="mt-2 space-y-2 text-sm">
@@ -211,13 +314,13 @@ export default function ConsumerPortal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
       {/* Header */}
-      <header className="bg-green-900 text-white px-6 py-4 border-b-4 border-yellow-400">
-        <div className="flex items-center justify-between">
+      <header className="bg-green-900 text-white px-4 sm:px-6 py-3 sm:py-4 border-b-4 border-yellow-400">
+        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-3 sm:gap-0 sm:justify-between">
           <div className="flex items-center space-x-3">
             <Shield className="w-6 h-6 text-yellow-400" />
-            <h1 className="text-xl font-bold tracking-wide">HerbalTrace - Consumer Portal</h1>
+            <h1 className="text-lg sm:text-xl font-bold tracking-wide text-center sm:text-left">HerbalTrace - Consumer Portal</h1>
           </div>
-          <Button variant="outline" size="sm" onClick={() => navigate('/')} className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20">
+          <Button variant="outline" size="sm" onClick={() => navigate('/')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 text-sm">
             <ArrowLeft className="h-4 w-4" />
             Home
           </Button>
@@ -225,7 +328,7 @@ export default function ConsumerPortal() {
       </header>
 
       {/* Main Content */}
-      <main className="px-6 py-8 max-w-4xl mx-auto">
+      <main className="px-4 sm:px-6 py-6 sm:py-8 max-w-4xl mx-auto">
         {/* Search Section */}
         <Card className="mb-8">
           <CardHeader>
@@ -237,19 +340,20 @@ export default function ConsumerPortal() {
           <CardContent>
             {!showScanner ? (
               <div className="space-y-4">
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Input
+                    className="w-full sm:flex-1"
                     placeholder="Enter Batch ID from product packaging"
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && scanQRCode()}
                   />
-                  <Button onClick={() => scanQRCode()} disabled={loading} className="flex items-center space-x-2 w-32">
+                  <Button onClick={() => scanQRCode()} disabled={loading} className="flex items-center justify-center space-x-2 w-full sm:w-32">
                     {loading ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : <><Search className="w-4 h-4" /><span>Search</span></>}
                   </Button>
                 </div>
                 <div className="flex justify-center">
-                  <Button onClick={() => setShowScanner(true)} variant="outline" className="flex items-center space-x-2">
+                  <Button onClick={() => setShowScanner(true)} variant="outline" className="flex w-full sm:w-auto items-center justify-center space-x-2">
                     <Camera className="w-4 h-4" />
                     <span>Use Camera to Scan QR</span>
                   </Button>
@@ -282,7 +386,7 @@ export default function ConsumerPortal() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="relative pl-6">
+                <div className="relative pl-4 sm:pl-6">
                   {traceData.stages.map((stage, index) => (
                     <div key={index} className="relative pb-8">
                       {index < traceData.stages.length - 1 && (
@@ -295,7 +399,7 @@ export default function ConsumerPortal() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <StageTitle type={stage.stage_type} />
-                            <span className="text-xs text-muted-foreground">{new Date(stage.timestamp).toLocaleString()}</span>
+                            <span className="text-[11px] sm:text-xs text-muted-foreground">{new Date(stage.timestamp).toLocaleString()}</span>
                           </div>
                           <div className="p-4 border rounded-lg bg-muted/30">
                             <StageContent stage={stage} />
